@@ -1,0 +1,456 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HSML Animated SEIRD Dashboard</title>
+<script src="https://cdn.plot.ly/plotly-2.32.0.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+
+body{
+    margin:0;
+    font-family:'Poppins',sans-serif;
+    background:#eef4f7;
+    overflow:hidden;
+    zoom:0.92;
+}
+
+header{
+    background:linear-gradient(90deg,#0b1f33,#0f766e);
+    color:white;
+    text-align:center;
+    padding:8px;
+}
+
+header h1{
+    margin:0;
+    font-size:26px;
+}
+
+header p{
+    margin:2px 0 0 0;
+    font-size:12px;
+}
+
+.container{
+    display:grid;
+    grid-template-columns:240px 1fr;
+    gap:10px;
+    padding:10px;
+    height:calc(100vh - 80px);
+    box-sizing:border-box;
+}
+
+.controls{
+    background:white;
+    border-radius:10px;
+    padding:10px;
+    overflow-y:auto;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.control-group{
+    margin-bottom:10px;
+}
+
+label{
+    display:block;
+    font-weight:bold;
+    font-size:12px;
+    margin-bottom:3px;
+    color:#0b1f33;
+}
+
+input[type=range]{
+    width:100%;
+}
+
+.value{
+    font-size:11px;
+    color:#0f766e;
+    font-weight:bold;
+}
+
+.button-row{
+    display:flex;
+    gap:6px;
+    margin-top:10px;
+}
+
+button{
+    flex:1;
+    padding:8px;
+    border:none;
+    border-radius:6px;
+    color:white;
+    cursor:pointer;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.run-btn{
+    background:#0b1f33;
+}
+
+.reset-btn{
+    background:#6b7280;
+}
+
+.metrics{
+    display:flex;
+    gap:6px;
+    margin-top:10px;
+}
+
+.metric-box{
+    flex:1;
+    background:#eef4f7;
+    border-radius:8px;
+    padding:6px;
+    text-align:center;
+}
+
+.metric-box h3{
+    margin:0;
+    font-size:11px;
+}
+
+.metric-box p{
+    margin:4px 0 0 0;
+    font-size:16px;
+    font-weight:bold;
+    color:#0b1f33;
+}
+
+.dashboard{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    grid-template-rows:260px 210px 210px;
+    gap:10px;
+}
+
+.chart{
+    background:white;
+    border-radius:10px;
+    padding:4px;
+    box-shadow:0 2px 6px rgba(0,0,0,0.1);
+}
+
+.full-width{
+    grid-column:1 / span 2;
+}
+
+.plot{
+    width:100%;
+    height:100%;
+}
+
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>HSML SEIRD Dashboard</h1>
+<p>Interactive Cruise Ship Outbreak Simulation</p>
+</header>
+
+<div class="container">
+
+<div class="controls">
+
+<h2 style="margin-top:0;color:#0b1f33;">Parameters</h2>
+
+<div class="control-group">
+<label>Transmission β</label>
+<input type="range" min="0.05" max="0.5" step="0.01" value="0.23" id="beta">
+<div class="value" id="betaVal">0.23</div>
+</div>
+
+<div class="control-group">
+<label>Latency Z</label>
+<input type="range" min="2" max="20" step="0.1" value="9.12" id="Z">
+<div class="value" id="ZVal">9.12</div>
+</div>
+
+<div class="control-group">
+<label>Infectious D</label>
+<input type="range" min="3" max="25" step="0.1" value="11.52" id="D">
+<div class="value" id="DVal">11.52</div>
+</div>
+
+<div class="control-group">
+<label>Fatality δ</label>
+<input type="range" min="0.01" max="0.6" step="0.01" value="0.36" id="delta">
+<div class="value" id="deltaVal">0.36</div>
+</div>
+
+<div class="control-group">
+<label>Population</label>
+<input type="range" min="500" max="6000" step="100" value="3000" id="population">
+<div class="value" id="populationVal">3000</div>
+</div>
+
+<div class="control-group">
+<label>Initial Exposed</label>
+<input type="range" min="1" max="100" step="1" value="10" id="E0">
+<div class="value" id="E0Val">10</div>
+</div>
+
+<div class="control-group">
+<label>Initial Infectious</label>
+<input type="range" min="1" max="50" step="1" value="5" id="I0">
+<div class="value" id="I0Val">5</div>
+</div>
+
+<div class="control-group">
+<label>Simulation Days</label>
+<input type="range" min="30" max="180" step="1" value="90" id="days">
+<div class="value" id="daysVal">90</div>
+</div>
+
+<div class="button-row">
+<button class="run-btn" onclick="runSimulation()">Run</button>
+<button class="reset-btn" onclick="resetDashboard()">Reset</button>
+</div>
+
+<div class="metrics">
+<div class="metric-box">
+<h3>R₀</h3>
+<p id="r0Metric">-</p>
+</div>
+
+<div class="metric-box">
+<h3>Peak I</h3>
+<p id="peakMetric">-</p>
+</div>
+</div>
+
+</div>
+
+<div class="dashboard">
+
+<div class="chart full-width">
+<div id="seirdChart" class="plot"></div>
+</div>
+
+<div class="chart">
+<div id="activeChart" class="plot"></div>
+</div>
+
+<div class="chart">
+<div id="dailyChart" class="plot"></div>
+</div>
+
+<div class="chart">
+<div id="phaseChart" class="plot"></div>
+</div>
+
+<div class="chart">
+<div id="cumulativeChart" class="plot"></div>
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+const defaults = {
+beta:0.23,
+Z:9.12,
+D:11.52,
+delta:0.36,
+population:3000,
+E0:10,
+I0:5,
+days:90
+};
+
+const sliders=['beta','Z','D','delta','population','E0','I0','days'];
+
+sliders.forEach(id=>{
+    document.getElementById(id).addEventListener('input',()=>{
+        const target = document.getElementById(id+'Val') ||
+                       document.getElementById(id.replace('population','populationVal'));
+        if(target){
+            target.textContent = document.getElementById(id).value;
+        }
+    });
+});
+
+function emptyChart(div,title,x,y){
+
+    Plotly.newPlot(div,[],{
+        title:title,
+        xaxis:{title:x},
+        yaxis:{title:y},
+        annotations:[{
+            text:'Press Run to Simulate',
+            showarrow:false,
+            xref:'paper',
+            yref:'paper',
+            x:0.5,
+            y:0.5,
+            font:{size:14,color:'gray'}
+        }],
+        paper_bgcolor:'white',
+        plot_bgcolor:'white',
+        margin:{l:45,r:15,t:35,b:35}
+    },{responsive:true});
+}
+
+function initializeCharts(){
+
+    emptyChart('seirdChart','SEIRD Population Dynamics','Time (Days)','Population');
+    emptyChart('activeChart','Hidden vs Identified Cases','Time (Days)','Individuals');
+    emptyChart('dailyChart','Daily New Infections','Time (Days)','Cases Per Day');
+    emptyChart('phaseChart','Phase Space Dynamics','Exposed Population','Infectious Population');
+    emptyChart('cumulativeChart','Cumulative Cases','Time (Days)','Cumulative Cases');
+}
+
+function resetDashboard(){
+
+    Object.keys(defaults).forEach(key=>{
+
+        document.getElementById(key).value = defaults[key];
+
+        const el = document.getElementById(key+'Val') ||
+                   document.getElementById(key.replace('population','populationVal'));
+
+        if(el){
+            el.textContent = defaults[key];
+        }
+    });
+
+    document.getElementById('r0Metric').textContent='-';
+    document.getElementById('peakMetric').textContent='-';
+
+    initializeCharts();
+}
+
+async function runSimulation(){
+
+    let beta=parseFloat(document.getElementById('beta').value);
+    let Z=parseFloat(document.getElementById('Z').value);
+    let D=parseFloat(document.getElementById('D').value);
+    let delta=parseFloat(document.getElementById('delta').value);
+    let N=parseInt(document.getElementById('population').value);
+    let E0=parseInt(document.getElementById('E0').value);
+    let I0=parseInt(document.getElementById('I0').value);
+    let days=parseInt(document.getElementById('days').value);
+
+    let S=[N-E0-I0];
+    let E=[E0];
+    let I=[I0];
+    let R=[0];
+    let Dd=[0];
+    let daily=[0];
+    let cumulative=[I0];
+    let t=[0];
+
+    for(let day=1; day<=days; day++){
+
+        let newInf = beta*S[day-1]*I[day-1]/N;
+        let onset = E[day-1]/Z;
+        let rec = (1-delta)*I[day-1]/D;
+        let death = delta*I[day-1]/D;
+
+        S.push(Math.max(S[day-1]-newInf,0));
+        E.push(Math.max(E[day-1]+newInf-onset,0));
+        I.push(Math.max(I[day-1]+onset-rec-death,0));
+        R.push(R[day-1]+rec);
+        Dd.push(Dd[day-1]+death);
+
+        daily.push(newInf);
+        cumulative.push(cumulative[day-1]+newInf);
+
+        t.push(day);
+    }
+
+    document.getElementById('r0Metric').textContent=(beta*D).toFixed(2);
+    document.getElementById('peakMetric').textContent=Math.max(...I).toFixed(0);
+
+    const layoutBase = {
+        paper_bgcolor:'white',
+        plot_bgcolor:'white',
+        margin:{l:45,r:15,t:35,b:35},
+        font:{family:'Poppins, sans-serif',size:10,color:'#0b1f33'},
+        titlefont:{size:16,color:'#0b1f33'}
+    };
+
+    Plotly.newPlot('seirdChart',[],{
+        ...layoutBase,
+        title:{text:'<b>SEIRD Population Dynamics</b>'},
+        xaxis:{title:'Time (Days)'},
+        yaxis:{title:'Population'}
+    });
+
+    for(let k=2; k<t.length; k++){
+
+        Plotly.react('seirdChart',[
+            {x:t.slice(0,k),y:S.slice(0,k),name:'Susceptible',mode:'lines'},
+            {x:t.slice(0,k),y:E.slice(0,k),name:'Exposed',mode:'lines'},
+            {x:t.slice(0,k),y:I.slice(0,k),name:'Infectious',mode:'lines'},
+            {x:t.slice(0,k),y:R.slice(0,k),name:'Recovered',mode:'lines'},
+            {x:t.slice(0,k),y:Dd.slice(0,k),name:'Dead',mode:'lines'}
+        ],{
+            ...layoutBase,
+            title:{text:'<b>SEIRD Population Dynamics</b>'},
+            xaxis:{title:'Time (Days)'},
+            yaxis:{title:'Population'}
+        });
+
+        Plotly.react('activeChart',[
+            {x:t.slice(0,k),y:E.slice(0,k),name:'Exposed',mode:'lines'},
+            {x:t.slice(0,k),y:I.slice(0,k),name:'Infectious',mode:'lines'}
+        ],{
+            ...layoutBase,
+            title:{text:'<b>Hidden vs Identified Cases</b>'},
+            xaxis:{title:'Time (Days)'},
+            yaxis:{title:'Individuals'}
+        });
+
+        Plotly.react('dailyChart',[
+            {x:t.slice(0,k),y:daily.slice(0,k),type:'bar',name:'Daily Cases'}
+        ],{
+            ...layoutBase,
+            title:{text:'<b>Daily New Infections</b>'},
+            xaxis:{title:'Time (Days)'},
+            yaxis:{title:'Cases Per Day'}
+        });
+
+        Plotly.react('phaseChart',[
+            {x:E.slice(0,k),y:I.slice(0,k),mode:'lines',name:'Phase'}
+        ],{
+            ...layoutBase,
+            title:{text:'<b>Phase Space Dynamics</b>'},
+            xaxis:{title:'Exposed Population'},
+            yaxis:{title:'Infectious Population'}
+        });
+
+        Plotly.react('cumulativeChart',[
+            {x:t.slice(0,k),y:cumulative.slice(0,k),mode:'lines',name:'Cumulative'}
+        ],{
+            ...layoutBase,
+            title:{text:'<b>Cumulative Cases</b>'},
+            xaxis:{title:'Time (Days)'},
+            yaxis:{title:{text:'<b>Cumulative Cases</b>'}}
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 80));
+    }
+}
+
+window.onload = function(){
+    initializeCharts();
+};
+
+</script>
+
+</body>
+</html>
