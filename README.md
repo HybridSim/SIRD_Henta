@@ -1,7 +1,7 @@
 # HSML SEIRD Dashboard
 ## Interactive Cruise Ship Hantavirus Outbreak Simulation
 
-![HSML Dashboard](preview.png)
+https://hybridsim.github.io/SIRD_Henta/
 
 ---
 
